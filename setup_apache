@@ -1,6 +1,6 @@
 #!/bin/bash
 
-declare DEF_SITE_NAME="sfw_default"
+declare DEF_SITE_NAME=
 declare DEF_SITE_INDEX="index.htm"
 declare DEF_SITE_URL=
 
@@ -13,6 +13,48 @@ declare DEF_CONF_FILE="
    DirectoryIndex #index#
 </VirtualHost>
 "
+show_usage()
+{
+    local msg="
+The command, setup_apache, is a tool to simplify the
+process of setting up an Apache website by generating,
+and installing a configuration file
+
+setup_apache < -a Action > < -n Site Name >  [ -i Index File ] [ -u URL ]
+
+Options:
+a (required) Action to take (install or uninstall)
+n (required) Site Name (mywebsite).  This value will
+  be used for the configuration file name AND, if a
+  URL is not specified, the ServerName setting in the
+  configuration.
+i (optional) Index File name (index.html or something
+  similar).  If not specified, index.htm will be used
+  in its place.
+u (optional) URL is the WWW URL for the site, to be
+  used for the ServerName setting.  If this field is omitted,
+  the Site name value will be used in its place.
+
+For '-a install':
+If the command is run as root (sudo), it will generate, 
+install, and enable an Apache configuration file, then
+reload Apache.  If not running as root, the proposed
+configuration file contents will be displayed.
+
+Further, if running as root, and the '-u URL' parameter
+is empty, the value of '-n Site Name' value will be added
+to the /etc/hosts file
+
+For '-a uninstall', which must be run as root to have
+any effect, the site will be disabled (a2dissite), the
+configuration file removed from /etc/apache2/sites-available,
+and, if '-u URL' is not specified, the /etc/hosts file
+will be changed (upon user view of changes and approval)
+to remove the hostname as defined by '-n Site Name'.
+"
+
+    echo "$msg"
+}
 
 get_array_index_of()
 {
@@ -253,34 +295,42 @@ uninstall_config()
         echo "'${DEF_SITE_NAME}' was not installed.  No changes made."
     fi
 }
-    
 
-echo
+process_action()
+{
+    case "$DEF_COMMAND_ACTION" in
+        (install)
+            echo "Installing"
+            if install_config; then
+                if url_is_local; then
+                    add_to_etc_hosts
+                fi
+            fi
+            ;;
+        (uninstall)
+            echo "UNInstalling"
+            if running_as_root; then
+                if url_is_local; then
+                    remove_from_etc_hosts
+                fi
+                uninstall_config
+            else
+                echo "Must run as root (sudo) to uninstall"
+            fi
+            ;;
+    esac
+}
+    
 
 parse_cl_args "$@"
 
-case "$DEF_COMMAND_ACTION" in
-    (install)
-        echo "Installing"
-        if install_config; then
-            if url_is_local; then
-                add_to_etc_hosts
-            fi
-        fi
-        ;;
-    (uninstall)
-        echo "UNInstalling"
-        if running_as_root; then
-            if url_is_local; then
-                remove_from_etc_hosts
-            fi
-            uninstall_config
-        else
-            echo "Must run as root (sudo) to uninstall"
-        fi
-        ;;
-esac
-
+if [ -z "$DEF_SITE_NAME" ]; then
+    echo "Failed to provide a site name"
+    show_usage
+else
+    echo
+    process_action
+fi
 
 echo
 
