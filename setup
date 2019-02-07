@@ -152,13 +152,19 @@ get_table_srm_files() { ls -1 | grep -e \.srm - | grep -v autoload -; }
 
 get_directory_index()
 {
+    local pwd="${PWD}"
+    cd site
+
     local -a srms
     srms=( $( get_table_srm_files ) )
+
     if [ "${#srms[@]}" -gt 0 ]; then
         echo "${srms[0]}"
     else
         echo "index.htm"
     fi
+
+    cd "$pwd"
 }
 
 remove_site_files()
@@ -443,7 +449,7 @@ install()
 
     if running_as_root; then
         echo "Installing apache configuration"
-        setup_apache -n "$DSITE" -i $( get_directory_index )
+        ./setup_apache -a install -n "$DSITE" -i $( get_directory_index )
     else
         echo "Run as root (sudo) to install apache configuration."
     fi
@@ -459,6 +465,11 @@ uninstall()
     cd ../generated
     rm *
     cd ..
+
+    if running_as_root; then
+        echo "Uninstalling apache configuration"
+        ./setup_apache -a uninstall -n "$DSITE"
+    fi
 }
 
 
