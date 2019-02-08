@@ -31,9 +31,8 @@ CREATE TABLE IF NOT EXISTS Email
 CREATE TABLE IF NOT EXISTS User
 (
    id       INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-   id_email INT UNSIGNED NOT NULL,
-   handle   VARCHAR(128) UNIQUE,
-   INDEX(id_email)
+   pw_hash  BINARY(16),
+   handle   VARCHAR(128) UNIQUE
 );
 
 -- -------------------------------
