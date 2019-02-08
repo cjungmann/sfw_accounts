@@ -373,13 +373,15 @@ load_procedures_from_scripts()
 
     local script
     local -a scripts
+    local -i exval
     # ls, one name per line, then use grep's invert-match to filter:
     scripts=( $( ls -1 | grep -v table - ) )
 
     for script in "${scripts[@]}"; do
         echo -n "Loading MySQL script '${script}'."
         mysql "$DBASE" < "${script}"
-        if [ $? -eq 0 ]; then
+        exval=$?
+        if [ $exval -eq 0 ]; then
             echo "..success"
         else
             echo "..error"
@@ -387,6 +389,8 @@ load_procedures_from_scripts()
     done
 
     cd "$pwd"
+
+    return $exval
 }
 
 create_autoload()
@@ -411,9 +415,6 @@ create_autoload()
     local srm label
     local -a srms
     srms=( $( get_table_srm_files ) )
-
-    echo "SRMS are:" >&2
-    printf "'%s'\n" "${srms[@]}" >&2
 
     # Clear the file ahead of file-appends
     echo -n > "$target"
@@ -441,9 +442,16 @@ install()
     setup_framework
     prepare_directories
     move_protected_scripts
-    load_tables_from_scripts
+
+    if ! load_tables_from_scripts; then
+        exit 1
+    fi
+
     generate_scripts_from_tables
-    load_procedures_from_scripts
+
+    if ! load_procedures_from_scripts; then
+        exit 1
+    fi
 
     create_autoload
 
